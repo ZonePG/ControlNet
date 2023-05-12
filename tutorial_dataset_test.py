@@ -1,6 +1,6 @@
 from tutorial_dataset import MyDataset
 
-dataset = MyDataset()
+dataset = MyDataset('/root/autodl-tmp/coco_controlnet')
 print(len(dataset))
 
 item = dataset[1234]
