@@ -66,7 +66,6 @@ with torch.no_grad():
         with open(txt_file, "r") as f:
             prompt = f.read()
 
-        prompt = "There are one people in the picture, One is jumping."
         a_prompt = "masterpiece, (photorealistic:1.5), best quality, beautiful lighting, real life"
         n_prompt = "(painting by bad-artist-anime:0.9), (painting by bad-artist:0.9), watermark,extra person,extra arm,extra leg, text, error, blurry, jpeg artifacts, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, artist name, (worst quality, low quality:1.4), bad anatomy"
         num_samples = 1

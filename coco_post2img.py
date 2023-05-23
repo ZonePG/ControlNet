@@ -20,10 +20,10 @@ from cldm.ddim_hacked import DDIMSampler
 
 
 model_name = "control_v11p_sd15_openpose"
-model_config_name = f"/root/autodl-tmp/zoupeng/ControlNet/models/{model_name}.yaml"
+model_config_name = f"/root/autodl-tmp/models/{model_name}.yaml"
 # model_checkpoint_name = "/root/autodl-tmp/zoupeng/ControlNet/checkpoint-coco-epoch4-batchsize16/lightning_logs/version_0/checkpoints/epoch=4-step=13084.ckpt"
-model_checkpoint_name = "/root/autodl-tmp/zoupeng/ControlNet/checkpoint-coco-batchsize32/lightning_logs/version_0/checkpoints/epoch=9-step=13090.pt"
-base_model_checkpoint_name = "/root/autodl-tmp/zoupeng/ControlNet/models/v1-5-pruned.ckpt"
+model_checkpoint_name = "/root/autodl-tmp/models/epoch=26-step=35343.pt"
+base_model_checkpoint_name = "/root/autodl-tmp/models/v1-5-pruned.ckpt"
 model = create_model(model_config_name).cpu()
 model.load_state_dict(
     load_state_dict(base_model_checkpoint_name, location="cuda"),

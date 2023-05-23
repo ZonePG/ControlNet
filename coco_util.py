@@ -449,6 +449,21 @@ def get_center_keypoints(img_idx, dst_shape=(384, 512, 3), size="small"):
         return kpts1[0]
 
 
+def get_imgs_id_have_all_keypoints():
+    imgs_id_have_all_keypoints = []
+    for img_id in img_ids:
+        annIds = coco.getAnnIds(imgIds=img_id, iscrowd=False)
+        objs = coco.loadAnns(annIds)
+        is_have_all_keypoints = True
+        for person_id, obj in enumerate(objs):
+            if obj["num_keypoints"] != 17:
+                is_have_all_keypoints = False
+                break
+        if is_have_all_keypoints:
+            imgs_id_have_all_keypoints.append(img_id)
+    return sorted(imgs_id_have_all_keypoints)
+
+
 def get_box(keypoint):
     kpts = np.array(keypoint).reshape(-1, 3)
     mask = np.logical_and(kpts[:, 0] != 0, kpts[:, 1] != 0)
@@ -459,14 +474,14 @@ def get_box(keypoint):
             konghang.append(i)
     kpt_new = np.delete(kpts, konghang, axis=0)
 
-    MAX = np.max(kpt_new, axis=0)
+    MAX = np.max(kpt_new, axis=0).tolist()
     X_max, Y_max = MAX[0], MAX[1]
-    MIN = np.min(kpt_new, axis=0)
+    MIN = np.min(kpt_new, axis=0).tolist()
     X_min, Y_min = MIN[0], MIN[1]
     return [X_min, Y_min, X_max, Y_max]
 
 
-coco_json_path = "/root/autodl-tmp/person_keypoints_train2017.json"
+coco_json_path = "/root/autodl-tmp/datasets/person_keypoints_train2017.json"
 coco_img_path = "."
 
 coco = COCO(coco_json_path)
