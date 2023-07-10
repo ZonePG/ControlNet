@@ -502,7 +502,7 @@ def get_imgs_id_have_all_keypoints(coco):
         objs = coco.loadAnns(annIds)
         is_have_all_keypoints = True
         for person_id, obj in enumerate(objs):
-            if obj["num_keypoints"] < 13:
+            if obj["num_keypoints"] != 17:
                 is_have_all_keypoints = False
                 break
         if is_have_all_keypoints:
