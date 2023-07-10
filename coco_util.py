@@ -9,7 +9,7 @@ import time as time
 import itertools
 import math
 import random
-
+import seaborn as sns
 
 def kp_trans(box, dst_shape=(384, 512), size="small"):
     scale = None
@@ -72,9 +72,8 @@ def kp_trans(box, dst_shape=(384, 512), size="small"):
     return trans
 
 
-def kp_trans_dst(box, dst_shape=(384, 512), dst_center=None):
+def kp_trans_dst(box, dst_shape=(384, 512), dst_center=None, rotation=None):
     scale = None
-    rotation = None
 
     src_xmin, src_ymin, src_xmax, src_ymax = box[:4]
     src_w = src_xmax - src_xmin
@@ -375,7 +374,7 @@ def show_skelenton(img, kpts, thr=0.01):
     for n in range(len(kpts)):
         x, y = kpts[n][0:2]
         cv2.circle(img, (int(x), int(y)), 3, colors[n], thickness=-1)
-
+        # cv2.imwrite("s{}.jpg".format(n), img)
     i = 0
     for sk in skelenton:
         pos1 = (int(kpts[sk[0] - 1, 0]), int(kpts[sk[0] - 1, 1]))
@@ -400,11 +399,56 @@ def show_skelenton(img, kpts, thr=0.01):
                 (int(mY), int(mX)), (int(length / 2), stickwidth), int(angle), 0, 360, 1
             )  # 画连接的椭圆
             cv2.fillConvexPoly(img, polygon, colors[i])  # 填充颜色
-            i += 1
+        i += 1
     return img
 
+def draw_hsd_skeleton(image, kpts, thr=0.01):
+    humansd_skeleton=[
+              [0,0,1],
+              [1,0,2],
+              [2,1,3],
+              [3,2,4],
+              [4,3,5],
+              [5,4,6],
+              [6,5,7],
+              [7,6,8],
+              [8,7,9],
+              [9,8,10],
+              [10,5,11],
+              [11,6,12],
+              [12,11,13],
+              [13,12,14],
+              [14,13,15],
+              [15,14,16],
+          ]
+    humansd_skeleton_width=10
+    humansd_color=sns.color_palette("hls", len(humansd_skeleton)) 
+    kpts = np.array(kpts).reshape(-1, 3)
+    def plot_kpts(img_draw, kpts, color, edgs,width):     
+        for idx, kpta, kptb in edgs:
 
-def get_center_keypoints(img_idx, dst_shape=(384, 512, 3), size="small"):
+            line_color = tuple([int(255*color_i) for color_i in color[idx]])
+            pos1 = (int(kpts[kpta,0]),int(kpts[kpta,1]))
+            pos2 = (int(kpts[kptb,0]),int(kpts[kptb,1]))
+
+            if (
+                pos1[0] > 0
+                and pos1[1] > 0
+                and pos2[0] > 0
+                and pos2[1] > 0
+                and kpts[kpta , 2] > thr
+                and kpts[kptb , 0] > thr
+            ):
+
+                cv2.line(img_draw, (int(kpts[kpta,0]),int(kpts[kpta,1])), (int(kpts[kptb,0]),int(kpts[kptb,1])), line_color,width)
+                cv2.circle(img_draw, (int(kpts[kpta,0]),int(kpts[kpta,1])), width//2, line_color, -1)
+                cv2.circle(img_draw, (int(kpts[kptb,0]),int(kpts[kptb,1])), width//2, line_color, -1)
+    plot_kpts(image, kpts,humansd_color,humansd_skeleton,humansd_skeleton_width)
+        
+    return image
+
+
+def get_center_keypoints(coco, img_idx, dst_shape=(384, 512, 3), size="small"):
     annIds = coco.getAnnIds(imgIds=img_idx, iscrowd=False)
     objs = coco.loadAnns(annIds)
     for person_id, obj in enumerate(objs):
@@ -449,14 +493,16 @@ def get_center_keypoints(img_idx, dst_shape=(384, 512, 3), size="small"):
         return kpts1[0]
 
 
-def get_imgs_id_have_all_keypoints():
+def get_imgs_id_have_all_keypoints(coco):
+    catIds = coco.getCatIds(catNms=["person"])
+    img_ids = coco.getImgIds(catIds=catIds)
     imgs_id_have_all_keypoints = []
     for img_id in img_ids:
         annIds = coco.getAnnIds(imgIds=img_id, iscrowd=False)
         objs = coco.loadAnns(annIds)
         is_have_all_keypoints = True
         for person_id, obj in enumerate(objs):
-            if obj["num_keypoints"] != 17:
+            if obj["num_keypoints"] < 13:
                 is_have_all_keypoints = False
                 break
         if is_have_all_keypoints:
@@ -481,9 +527,27 @@ def get_box(keypoint):
     return [X_min, Y_min, X_max, Y_max]
 
 
-coco_json_path = "/root/autodl-tmp/datasets/person_keypoints_train2017.json"
-coco_img_path = "."
+def get_useful_point(keypoint):
+    kpts = np.array(keypoint).reshape(-1, 3)
+    mask = np.logical_and(kpts[:, 0] != 0, kpts[:, 1] != 0)
+    # 通过坐标点，找框，然后找中心点坐标，从而生成仿射矩阵，进行坐标点的变化
+    konghang = []
+    for i in range(len(kpts)):
+        if kpts[i][2] == 0:
+            konghang.append(i)
+    kpt_new = np.delete(kpts, konghang, axis=0)
 
-coco = COCO(coco_json_path)
-catIds = coco.getCatIds(catNms=["person"])
-img_ids = coco.getImgIds(catIds=catIds)
+    MAX = np.max(kpt_new, axis=0).tolist()
+    X_max, Y_max = MAX[0], MAX[1]
+    MIN = np.min(kpt_new, axis=0).tolist()
+    X_min, Y_min = MIN[0], MIN[1]
+    X_center = (X_min + X_max) / 2
+    Y_center = (Y_min + Y_max) / 2
+    return X_min, Y_min, X_max, Y_max, X_center, Y_center
+
+
+def load_coco(coco_json_path):
+    # coco_json_path = "/root/autodl-tmp/data/person_keypoints_train2017.json"
+    # coco_json_path = "/root/person_keypoints_coco_controlnet348_new.json"
+    # coco_img_path = "."
+    return COCO(coco_json_path)
